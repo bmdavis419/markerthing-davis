@@ -96,18 +96,27 @@ function parseMarkers(props: { vod: VOD; offset?: { totalSeconds: number } }) {
   const taggedMarkers = mockedMarkers.map((marker, id) => {
     const taggedDescription = parseMetadataFromMarker(marker.description);
     const markerPosition = marker.position_seconds - OFFSET;
+    const nextBoundary = mockedMarkers
+      .slice(id + 1)
+      .find(
+        (nextMarker) =>
+          parseMetadataFromMarker(nextMarker.description).type !== "clip"
+      );
 
     let startTime =
       taggedDescription.type === "clip"
-        ? Math.max(markerPosition - CLIP_LOOKBACK_SECONDS - EXPORT_BUFFER, 0)
+        ? Math.max(markerPosition - CLIP_LOOKBACK_SECONDS, 0)
         : Math.max(markerPosition - EXPORT_BUFFER, 0);
 
     let endTime =
       taggedDescription.type === "clip"
-        ? markerPosition + EXPORT_BUFFER
-        : (mockedMarkers[id + 1]?.position_seconds ??
+        ? markerPosition
+        : (nextBoundary?.position_seconds ??
             (videoDuration as duration.Duration)?.asSeconds?.()) - OFFSET +
           EXPORT_BUFFER;
+
+    const highlightTime =
+      taggedDescription.type === "clip" ? markerPosition : startTime;
 
     if (endTime < 0) endTime = 1;
     if (endTime < startTime) startTime = endTime;
@@ -119,6 +128,7 @@ function parseMarkers(props: { vod: VOD; offset?: { totalSeconds: number } }) {
     return {
       startTime,
       endTime,
+      highlightTime,
       duration,
       ...taggedDescription,
     };
@@ -130,7 +140,7 @@ function parseMarkers(props: { vod: VOD; offset?: { totalSeconds: number } }) {
 
   const ytChapters = filteredMarkers.reduce((acc, marker) => {
     const timeStr = dayjs
-      .duration(marker.startTime * 1000)
+      .duration(marker.highlightTime * 1000)
       .format("HH:mm:ss");
     return `${acc}${timeStr} ${marker.label}\n`;
   }, "");
@@ -315,7 +325,7 @@ export const VodPlayer = (props: { id: string; vod: VOD }) => {
                     className="w-full"
                     onClick={() => {
                       if (marker.type === "start" || marker.type === "clip") {
-                        player?.seek(marker.startTime);
+                        player?.seek(marker.highlightTime);
                       }
 
                       if (marker.type === "offset") {
