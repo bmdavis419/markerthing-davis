@@ -209,7 +209,7 @@ const initializePlayer = (
 
 // Number of seconds to pad on each side of exported CSV
 const EXPORT_BUFFER = 10;
-const CLIP_LOOKBACK_SECONDS = 10 * 60;
+const CLIP_LOOKBACK_SECONDS = 15 * 60;
 
 export const VodPlayer = (props: { id: string; vod: VOD }) => {
   const [player, setPlayer] = useState<Player | null>(null);
